@@ -23,6 +23,8 @@ expo-env.d.ts
 
 # Firebase credentials
 socialmedia-9567a-firebase-adminsdk-fbsvc-76b17ce1ba.json
+google-services.json
+GoogleService-Info.plist
 
 # debug
 npm-debug.*
