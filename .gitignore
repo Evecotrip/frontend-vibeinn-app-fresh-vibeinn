@@ -21,6 +21,9 @@ expo-env.d.ts
 # Metro
 .metro-health-check*
 
+# Firebase credentials
+socialmedia-9567a-firebase-adminsdk-fbsvc-76b17ce1ba.json
+
 # debug
 npm-debug.*
 yarn-debug.*
