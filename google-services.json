@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "104759623943",
+    "project_id": "socialmedia-9567a",
+    "storage_bucket": "socialmedia-9567a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:104759623943:android:efa5a23164c848822605a2",
+        "android_client_info": {
+          "package_name": "com.eveco.vibeinn"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "104759623943-n84monr7bfnf5b6914d6iqf767ahduc4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.eveco.vibeinn",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "104759623943-1c2p7ao2ms97rr17pthuiq22n6ofr7ek.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB5gslQUe7qAK8l0wec-Hxyr7lj-lUxBmA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "104759623943-1c2p7ao2ms97rr17pthuiq22n6ofr7ek.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

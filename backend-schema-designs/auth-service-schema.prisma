@@ -1,0 +1,491 @@
+// prisma/schema.prisma
+// Multi-Tenant Auth Service 
+// Author: Aditya 
+// Last Updated: 2025-10-31
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+  binaryTargets   = ["native", "linux-musl", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// TENANT MODEL
+// Core tenant/project configuration
+// ==========================================
+model Tenant {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @db.VarChar(255)
+  slug String @unique @db.VarChar(100)
+
+  // API Keys for authentication
+  apiKey        String @unique @map("api_key") @db.VarChar(255)
+  apiSecretHash String @map("api_secret_hash") @db.VarChar(255) // bcrypt hashed
+
+  // Domain configuration
+  domain         String?  @db.VarChar(255)
+  allowedDomains String[] @default([]) @map("allowed_domains") // For CORS
+  allowedOrigins String[] @default([]) @map("allowed_origins") // For CORS
+
+  // Third-party auth provider configuration
+  authProvider   AuthProvider @default(CUSTOM) @map("auth_provider")
+  clerkConfig    Json?        @map("clerk_config") // Clerk-specific config
+  firebaseConfig Json?        @map("firebase_config") // Firebase-specific config
+
+  // Tenant-specific settings
+  config Json @default("{}")
+
+  // Limits and quotas
+  maxUsers           Int @default(10000) @map("max_users")
+  maxApiCallsPerHour Int @default(10000) @map("max_api_calls_per_hour")
+  rateLimitPerIp     Int @default(1000) @map("rate_limit_per_ip")
+
+  // Status and metadata
+  isActive  Boolean @default(true) @map("is_active")
+  isPremium Boolean @default(false) @map("is_premium")
+
+  // Billing information
+  billingEmail String? @map("billing_email") @db.VarChar(255)
+  billingPlan  String? @default("free") @map("billing_plan") @db.VarChar(50)
+
+  // Webhooks
+  webhookUrl    String?  @map("webhook_url") @db.VarChar(500)
+  webhookSecret String?  @map("webhook_secret") @db.VarChar(255)
+  webhookEvents String[] @default([]) @map("webhook_events")
+
+  // Timestamps
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  // Relations
+  users           User[]
+  sessions        Session[]
+  jwtTokens       JwtToken[]
+  auditLogs       AuditLog[]
+  analyticsEvents AnalyticsEvent[]
+
+  // Indexes for performance
+  @@index([apiKey], name: "idx_tenants_api_key")
+  @@index([slug], name: "idx_tenants_slug")
+  @@index([isActive], name: "idx_tenants_active")
+  @@index([authProvider], name: "idx_tenants_auth_provider")
+  @@index([createdAt], name: "idx_tenants_created_at")
+  @@map("tenants")
+}
+
+// ==========================================
+// USER MODEL
+// Stores user data from Clerk/Firebase
+// ==========================================
+model User {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  // External auth provider IDs (from Clerk/Firebase)
+  clerkUserId    String? @unique @map("clerk_user_id") @db.VarChar(255)
+  firebaseUid    String? @unique @map("firebase_uid") @db.VarChar(255)
+  externalUserId String  @map("external_user_id") @db.VarChar(255) // Generic external ID
+
+  // User identification
+  email         String  @db.VarChar(255)
+  emailVerified Boolean @default(false) @map("email_verified")
+  phone         String? @db.VarChar(50)
+  phoneVerified Boolean @default(false) @map("phone_verified")
+
+  // Profile information (synced from Clerk/Firebase)
+  firstName   String? @map("first_name") @db.VarChar(100)
+  lastName    String? @map("last_name") @db.VarChar(100)
+  fullName    String? @map("full_name") @db.VarChar(255)
+  displayName String? @map("display_name") @db.VarChar(255)
+  avatarUrl   String? @map("avatar_url") @db.VarChar(500)
+
+  // User metadata from external provider
+  providerMetadata Json? @map("provider_metadata")
+
+  // User status
+  isActive     Boolean   @default(true) @map("is_active")
+  isBanned     Boolean   @default(false) @map("is_banned")
+  bannedReason String?   @map("banned_reason") @db.Text
+  bannedAt     DateTime? @map("banned_at") @db.Timestamptz(6)
+
+  // Last activity tracking
+  lastLoginAt     DateTime? @map("last_login_at") @db.Timestamptz(6)
+  lastLoginIp     String?   @map("last_login_ip") @db.Inet
+  lastLoginDevice String?   @map("last_login_device") @db.VarChar(255)
+
+  // Custom user data (for your application)
+  customData Json? @map("custom_data")
+
+  // Timestamps
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  // Relations
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions        Session[]
+  jwtTokens       JwtToken[]
+  roles           UserRole[]
+  auditLogs       AuditLog[]
+  analyticsEvents AnalyticsEvent[]
+
+  // Composite unique constraints
+  @@unique([tenantId, email], name: "unique_tenant_email")
+  @@unique([tenantId, externalUserId], name: "unique_tenant_external_id")
+  // Indexes for performance
+  @@index([tenantId], name: "idx_users_tenant_id")
+  @@index([email], name: "idx_users_email")
+  @@index([tenantId, email], name: "idx_users_tenant_email")
+  @@index([clerkUserId], name: "idx_users_clerk_id")
+  @@index([firebaseUid], name: "idx_users_firebase_uid")
+  @@index([externalUserId], name: "idx_users_external_id")
+  @@index([isActive], name: "idx_users_active")
+  @@index([isBanned], name: "idx_users_banned")
+  @@index([lastLoginAt], name: "idx_users_last_login")
+  @@index([createdAt], name: "idx_users_created_at")
+  @@map("users")
+}
+
+// ==========================================
+// SESSION MODEL
+// Tracks active user sessions
+// ==========================================
+model Session {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+
+  // Session token (from Clerk/Firebase)
+  externalSessionId    String? @map("external_session_id") @db.VarChar(255)
+  externalSessionToken String? @map("external_session_token") @db.Text
+
+  // Our internal session tracking
+  sessionToken String @unique @map("session_token") @db.VarChar(255)
+
+  // Device information
+  deviceType    String? @map("device_type") @db.VarChar(50) // web, mobile, tablet
+  deviceName    String? @map("device_name") @db.VarChar(255)
+  deviceOs      String? @map("device_os") @db.VarChar(100)
+  deviceBrowser String? @map("device_browser") @db.VarChar(100)
+  deviceInfo    Json?   @map("device_info")
+
+  // Network information
+  ipAddress String  @map("ip_address") @db.Inet
+  userAgent String? @map("user_agent") @db.Text
+  location  Json? // { country, city, lat, lng }
+
+  // Session timing
+  lastActivity DateTime @default(now()) @map("last_activity") @db.Timestamptz(6)
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(6)
+
+  // Session status
+  isActive      Boolean   @default(true) @map("is_active")
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy     String?   @map("revoked_by") @db.Uuid
+  revokedReason String?   @map("revoked_reason") @db.VarChar(255)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes for performance
+  @@index([tenantId], name: "idx_sessions_tenant_id")
+  @@index([userId], name: "idx_sessions_user_id")
+  @@index([sessionToken], name: "idx_sessions_token")
+  @@index([tenantId, userId], name: "idx_sessions_tenant_user")
+  @@index([isActive], name: "idx_sessions_active")
+  @@index([expiresAt], name: "idx_sessions_expires_at")
+  @@index([lastActivity], name: "idx_sessions_last_activity")
+  @@index([ipAddress], name: "idx_sessions_ip")
+  @@map("sessions")
+}
+
+// ==========================================
+// JWT TOKEN MODEL
+// Stores our custom JWT tokens issued after Clerk/Firebase auth
+// ==========================================
+model JwtToken {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+
+  // JWT token information
+  jti       String @unique @db.VarChar(255) // JWT ID (unique identifier)
+  token     String @unique @db.Text // Full JWT token (for reference/audit)
+  tokenHash String @map("token_hash") @db.VarChar(255) // SHA256 hash for quick lookup
+
+  // Token type and purpose
+  tokenType TokenType @map("token_type")
+  purpose   String?   @db.VarChar(100) // e.g., "api_access", "refresh", "service_to_service"
+
+  // Token metadata
+  scope    String[] @default([]) // Permissions/scopes for this token
+  audience String[] @default([]) // Intended audiences
+
+  // Token timing
+  issuedAt  DateTime  @map("issued_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  notBefore DateTime? @map("not_before") @db.Timestamptz(6)
+
+  // Token status
+  isRevoked     Boolean   @default(false) @map("is_revoked")
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy     String?   @map("revoked_by") @db.Uuid
+  revokedReason String?   @map("revoked_reason") @db.VarChar(255)
+
+  // Usage tracking
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(6)
+  usageCount Int       @default(0) @map("usage_count")
+
+  // Device and network info
+  issuedFromIp String? @map("issued_from_ip") @db.Inet
+  deviceInfo   Json?   @map("device_info")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Indexes for performance
+  @@index([tenantId], name: "idx_jwt_tokens_tenant_id")
+  @@index([userId], name: "idx_jwt_tokens_user_id")
+  @@index([jti], name: "idx_jwt_tokens_jti")
+  @@index([tokenHash], name: "idx_jwt_tokens_hash")
+  @@index([tenantId, userId], name: "idx_jwt_tokens_tenant_user")
+  @@index([tokenType], name: "idx_jwt_tokens_type")
+  @@index([isRevoked], name: "idx_jwt_tokens_revoked")
+  @@index([expiresAt], name: "idx_jwt_tokens_expires_at")
+  @@index([lastUsedAt], name: "idx_jwt_tokens_last_used")
+  @@index([createdAt], name: "idx_jwt_tokens_created_at")
+  @@map("jwt_tokens")
+}
+
+// ==========================================
+// ROLE MODEL (Tenant-Scoped RBAC)
+// ==========================================
+model Role {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+
+  // Role identification
+  name        String  @db.VarChar(100)
+  slug        String  @db.VarChar(100)
+  description String? @db.Text
+
+  // Permissions (flexible JSON structure)
+  permissions Json @default("[]")
+
+  // Role hierarchy
+  priority Int @default(0) // Higher number = higher priority
+
+  // Role metadata
+  isSystem  Boolean @default(false) @map("is_system") // System roles can't be deleted
+  isDefault Boolean @default(false) @map("is_default") // Auto-assigned to new users
+
+  // Timestamps
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  // Relations
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles UserRole[]
+
+  // Composite unique constraint
+  @@unique([tenantId, slug], name: "unique_tenant_role_slug")
+  // Indexes
+  @@index([tenantId], name: "idx_roles_tenant_id")
+  @@index([slug], name: "idx_roles_slug")
+  @@index([isSystem], name: "idx_roles_system")
+  @@index([isDefault], name: "idx_roles_default")
+  @@map("roles")
+}
+
+// ==========================================
+// USER ROLE MODEL (Many-to-Many)
+// ==========================================
+model UserRole {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  userId   String @map("user_id") @db.Uuid
+  roleId   String @map("role_id") @db.Uuid
+
+  // Assignment metadata
+  assignedAt DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  assignedBy String?   @map("assigned_by") @db.Uuid
+  expiresAt  DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  // Composite unique constraint
+  @@unique([tenantId, userId, roleId], name: "unique_tenant_user_role")
+  // Indexes
+  @@index([tenantId], name: "idx_user_roles_tenant_id")
+  @@index([userId], name: "idx_user_roles_user_id")
+  @@index([roleId], name: "idx_user_roles_role_id")
+  @@index([expiresAt], name: "idx_user_roles_expires_at")
+  @@map("user_roles")
+}
+
+// ==========================================
+// AUDIT LOG MODEL
+// Comprehensive audit trail for compliance
+// ==========================================
+model AuditLog {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  userId   String? @map("user_id") @db.Uuid
+
+  // Event information
+  action     String  @db.VarChar(100) // e.g., "user.login", "token.issued", "session.created"
+  resource   String  @db.VarChar(100) // e.g., "user", "session", "token"
+  resourceId String? @map("resource_id") @db.VarChar(255)
+
+  // Status
+  status       AuditStatus @default(SUCCESS)
+  statusCode   Int?        @map("status_code")
+  errorMessage String?     @map("error_message") @db.Text
+
+  // Request information
+  ipAddress String  @map("ip_address") @db.Inet
+  userAgent String? @map("user_agent") @db.Text
+  requestId String? @map("request_id") @db.VarChar(255)
+
+  // Additional metadata
+  metadata Json? // Flexible field for additional data
+  changes  Json? // For update operations, store before/after
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Partitioning hint (implement at database level)
+  // Partition by: (tenantId, createdAt) for better performance
+
+  // Indexes for performance
+  @@index([tenantId], name: "idx_audit_logs_tenant_id")
+  @@index([userId], name: "idx_audit_logs_user_id")
+  @@index([action], name: "idx_audit_logs_action")
+  @@index([resource], name: "idx_audit_logs_resource")
+  @@index([status], name: "idx_audit_logs_status")
+  @@index([createdAt], name: "idx_audit_logs_created_at")
+  @@index([tenantId, createdAt], name: "idx_audit_logs_tenant_created")
+  @@index([ipAddress], name: "idx_audit_logs_ip")
+  @@map("audit_logs")
+}
+
+// ==========================================
+// ANALYTICS EVENT MODEL
+// Track usage for billing and analytics
+// ==========================================
+model AnalyticsEvent {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  userId   String? @map("user_id") @db.Uuid
+
+  // Event details
+  eventType String @map("event_type") @db.VarChar(100)
+  eventName String @map("event_name") @db.VarChar(255)
+
+  // Event properties
+  properties Json?
+
+  // Timestamps
+  timestamp DateTime @default(now()) @db.Timestamptz(6)
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // Indexes
+  @@index([tenantId], name: "idx_analytics_events_tenant_id")
+  @@index([userId], name: "idx_analytics_events_user_id")
+  @@index([eventType], name: "idx_analytics_events_type")
+  @@index([timestamp], name: "idx_analytics_events_timestamp")
+  @@index([tenantId, timestamp], name: "idx_analytics_events_tenant_timestamp")
+  @@map("analytics_events")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum AuthProvider {
+  CUSTOM // Internal auth (not used in your case)
+  CLERK // Clerk.dev
+  FIREBASE // Firebase Auth
+  AUTH0 // Auth0 (future)
+  SUPABASE // Supabase Auth (future)
+}
+
+enum TokenType {
+  ACCESS // Short-lived access token
+  REFRESH // Long-lived refresh token
+  API // API key token
+  SERVICE // Service-to-service token
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+  PARTIAL
+}
+
+// ==========================================
+// NOTES ON OPTIMIZATION
+// ==========================================
+
+// 1. INDEXES:
+//    - All foreign keys have indexes
+//    - Composite indexes for common query patterns
+//    - Timestamp indexes for time-based queries
+//    - Unique indexes for lookup fields
+//
+// 2. DATA TYPES:
+//    - UUID for IDs (better distribution, security)
+//    - INET for IP addresses (native PostgreSQL type)
+//    - Timestamptz for timezone-aware timestamps
+//    - VarChar with appropriate lengths (saves space)
+//    - JSON for flexible/nested data
+//
+// 3. PARTITIONING (Implement at DB level):
+//    - audit_logs: Partition by (tenant_id, created_at)
+//    - analytics_events: Partition by (tenant_id, timestamp)
+//    - Use monthly or quarterly partitions
+//
+// 4. ARCHIVAL STRATEGY:
+//    - Move old audit_logs to archive table after 90 days
+//    - Move old analytics_events to data warehouse
+//    - Soft delete users (deleted_at field)
+//
+// 5. PERFORMANCE TIPS:
+//    - Use connection pooling (PgBouncer)
+//    - Regular VACUUM and ANALYZE
+//    - Monitor slow queries
+//    - Use prepared statements
+//    - Implement read replicas for heavy read loads
+//
+// 6. SECURITY:
+//    - Never store plain text passwords/secrets
+//    - Use parameterized queries (Prisma does this)
+//    - Implement row-level security (RLS) in PostgreSQL
+//    - Regular backups with encryption
+//    - Audit log retention policy
