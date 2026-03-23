@@ -1,3 +1,7 @@
+// Edit Profile Picture Screen
+// Updated to use dummy data matching new ProfileInterface schema
+// API integration temporarily disabled until backend is ready
+
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -13,7 +17,7 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { updateUserProfilePic } from '../../../api/user/user-api';
+// import { updateUserProfilePic } from '../../../api/user/user-api'; // Temporarily disabled - using dummy data
 import { useThemes } from '../../../hooks/use-themes';
 
 const defaultAvatars = [
@@ -50,27 +54,53 @@ const EditProfilePic = () => {
     try {
       console.log('🔄 Updating profile picture to:', selectedAvatar);
       
-      const result = await updateUserProfilePic(selectedAvatar);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
       
-      if (result && result.success) {
-        console.log('✅ Profile picture updated successfully:', result.data.profile);
-        Alert.alert(
-          'Success',
-          'Profile picture updated successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => router.back(),
-            },
-          ]
-        );
-      } else {
-        console.log('❌ Failed to update profile picture:', result);
-        Alert.alert(
-          'Error', 
-          'Failed to update profile picture. Please try again.'
-        );
-      }
+      // Dummy success response matching new schema
+      const dummyResult = {
+        success: true,
+        message: 'Profile picture updated successfully',
+        data: {
+          profile: {
+            id: "550e8400-e29b-41d4-a716-446655440000",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            authUserId: "auth-550e8400-e29b-41d4-a716-446655440000",
+            username: "johndoe",
+            slug: "johndoe",
+            fullName: "John Doe",
+            bio: "Computer Science student | Tech enthusiast",
+            location: "San Francisco, CA",
+            website: "https://johndoe.dev",
+            avatarUrl: selectedAvatar, // Updated avatar
+            coverImageUrl: "https://images.unsplash.com/photo-1557683316-973673baf926",
+            dateOfBirth: "2000-05-15",
+            gender: "MALE" as const,
+            academicRole: "UNDERGRADUATE" as const,
+            isPublic: true,
+            isVerified: true,
+            verificationBadge: "verified_student",
+            followerCount: 234,
+            followingCount: 189,
+            postCount: 42,
+            createdAt: "2024-01-15T10:30:00Z",
+            updatedAt: new Date().toISOString(),
+            deletedAt: null,
+          }
+        }
+      };
+      
+      console.log('✅ Profile picture updated successfully (dummy):', dummyResult.data.profile);
+      Alert.alert(
+        'Success',
+        'Profile picture updated successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]
+      );
     } catch (error) {
       console.error('❌ Error updating profile picture:', error);
       Alert.alert(

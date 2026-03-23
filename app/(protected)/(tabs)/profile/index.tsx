@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
-import { getCurrentUserProfile } from "../../../../api/user/user-api";
+// import { getCurrentUserProfile } from "../../../../api/user/user-api"; // Temporarily disabled
 import { useThemes } from "../../../../hooks/use-themes";
 
 const { width: screenWidth } = Dimensions.get("window");
@@ -38,19 +38,178 @@ const ProfileScreen = () => {
   const { signOut } = useClerk()
   const clerkUser = useUser()
 
-  // Mock stats for now - would come from API
-  const [stats] = useState<ProfileStats>({
-    posts: 42,
-    followers: 1240,
-    following: 380,
-  });
+  // Stats derived from profile counters
+  const stats: ProfileStats = {
+    posts: profile?.postCount || 0,
+    followers: profile?.followerCount || 0,
+    following: profile?.followingCount || 0,
+  };
 
+  // Dummy profile data matching new schema
   const loadProfile = async () => {
     try {
-      const response = await getCurrentUserProfile();
-      if (response?.data?.profile) {
-        setProfile(response.data.profile);
-      }
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Dummy data matching ProfileInterface from new schema
+      const dummyProfile: ProfileInterface = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+        authUserId: clerkUser?.user?.id || "user_123456",
+        
+        // Core profile data
+        username: "aryanjagarwal",
+        slug: "aryanjagarwal",
+        fullName: clerkUser?.user?.fullName || "Aryan Jagarwal",
+        bio: "Building the future of campus social networking 🚀 | Tech enthusiast | Coffee lover ☕",
+        location: "Mumbai, India",
+        website: "https://aryanjagarwal.com",
+        
+        // Media
+        avatarUrl: clerkUser?.user?.imageUrl || null,
+        coverImageUrl: "https://images.unsplash.com/photo-1557683316-973673baf926",
+        
+        // Personal info
+        dateOfBirth: "2000-01-15",
+        gender: "MALE",
+        academicRole: "UNDERGRADUATE",
+        
+        // Status
+        isPublic: true,
+        isVerified: true,
+        verificationBadge: "VERIFIED_STUDENT",
+        
+        // Counters
+        followerCount: 1240,
+        followingCount: 380,
+        postCount: 42,
+        
+        // Timestamps
+        createdAt: "2024-01-15T10:30:00Z",
+        updatedAt: "2024-11-03T08:45:00Z",
+        deletedAt: null,
+        
+        // Related data (optional)
+        privacySettings: {
+          id: "privacy-123",
+          tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+          userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+          profileVisibility: "PUBLIC",
+          showEmail: false,
+          showPhone: false,
+          showFollowers: true,
+          showFollowing: true,
+          allowMessages: "EVERYONE",
+          allowTags: "EVERYONE",
+          showOnlineStatus: true,
+          createdAt: "2024-01-15T10:30:00Z",
+          updatedAt: "2024-11-03T08:45:00Z",
+        },
+        socialLinks: [
+          {
+            id: "link-1",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            platform: "GITHUB",
+            url: "https://github.com/aryanjagarwal",
+            displayOrder: 1,
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+          {
+            id: "link-2",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            platform: "LINKEDIN",
+            url: "https://linkedin.com/in/aryanjagarwal",
+            displayOrder: 2,
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+        ],
+        interests: [
+          {
+            id: "interest-1",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            interest: "Web Development",
+            category: "Technology",
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+          {
+            id: "interest-2",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            interest: "Photography",
+            category: "Arts",
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+          {
+            id: "interest-3",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            interest: "Travel",
+            category: "Lifestyle",
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+        ],
+        skills: [
+          {
+            id: "skill-1",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            skillName: "React Native",
+            proficiency: "ADVANCED",
+            verified: true,
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+          {
+            id: "skill-2",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            skillName: "TypeScript",
+            proficiency: "EXPERT",
+            verified: true,
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+          {
+            id: "skill-3",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            skillName: "Node.js",
+            proficiency: "INTERMEDIATE",
+            verified: false,
+            createdAt: "2024-01-15T10:30:00Z",
+          },
+        ],
+        badges: [
+          {
+            id: "badge-1",
+            tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+            userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+            badgeType: "EARLY_ADOPTER",
+            badgeName: "Early Adopter",
+            badgeIcon: "🚀",
+            badgeColor: "#FFD700",
+            description: "One of the first users on the platform",
+            awardedAt: "2024-01-15T10:30:00Z",
+            expiresAt: null,
+          },
+        ],
+        metadata: {
+          id: "metadata-123",
+          tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+          userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+          onboardingCompleted: true,
+          profileCompletion: 85,
+          lastActiveAt: "2024-11-03T08:45:00Z",
+          timezone: "Asia/Kolkata",
+          language: "en",
+          customFields: null,
+          createdAt: "2024-01-15T10:30:00Z",
+          updatedAt: "2024-11-03T08:45:00Z",
+        },
+      };
+      
+      setProfile(dummyProfile);
     } catch (error) {
       console.error("Error loading profile:", error);
       Alert.alert("Error", "Failed to load profile data");
@@ -69,6 +228,7 @@ const ProfileScreen = () => {
     loadProfile();
   }, []);
 
+  // logout function -> Clerk + Secure Storage + API
   const handleLogout = () => {
     Alert.alert(
       "Logout",
@@ -78,13 +238,24 @@ const ProfileScreen = () => {
         {
           text: "Logout",
           style: "destructive",
-          onPress: () => {
-            logoutUser().catch((error) => {
-              console.error("Logout error:", error);
-            });
-            signOut()
-              .then(() => console.log("User signed out!"))
-              .catch((error) => console.error("Logout error:", error));
+          onPress: async () => {
+            try {
+              // Step 1: Revoke tokens and clear secure storage
+              await logoutUser();
+              console.log("✅ Backend tokens revoked and storage cleared");
+              
+              // Step 2: Sign out from Clerk
+              await signOut();
+              console.log("✅ User signed out from Clerk");
+            } catch (error) {
+              console.error("❌ Logout error:", error);
+              // Even if there's an error, try to sign out from Clerk
+              try {
+                await signOut();
+              } catch (signOutError) {
+                console.error("❌ Clerk sign out error:", signOutError);
+              }
+            }
           },
         },
       ]
@@ -149,15 +320,15 @@ const ProfileScreen = () => {
               colors={["#FFD700", "#FFA500", "#FF6B35"]}
               style={styles.profileImageGradient}
             >
-              {profile?.profileImageUrl ? (
+              {profile?.avatarUrl ? (
                 <Image
-                  source={{ uri: profile.profileImageUrl }}
+                  source={{ uri: profile.avatarUrl }}
                   style={styles.profileImage}
                 />
               ) : (
                 <View style={styles.profileImagePlaceholder}>
                   <Text style={styles.profileImageText}>
-                    {profile?.displayName?.charAt(0)?.toUpperCase() || "U"}
+                    {profile?.fullName?.charAt(0)?.toUpperCase() || profile?.username?.charAt(0)?.toUpperCase() || "U"}
                   </Text>
                 </View>
               )}
@@ -177,11 +348,11 @@ const ProfileScreen = () => {
           {/* User Info */}
           <View style={styles.userInfo}>
             <Text style={styles.displayName}>
-              {profile?.displayName || "Username"}
+              {profile?.fullName || profile?.username || "Username"}
             </Text>
-            {profile?.userName && (
+            {profile?.username && (
               <View style={styles.usernameContainer}>
-                <Text style={styles.username}>@{profile.userName}</Text>
+                <Text style={styles.username}>@{profile.username}</Text>
                 <TouchableOpacity 
                   style={styles.editUsernameButton}
                   onPress={() => router.push("/(protected)/edit-profile/edit-username")}
@@ -281,18 +452,18 @@ const ProfileScreen = () => {
             </View>
           </View>
 
-          {/* Phone Number */}
-          {profile?.phoneNumber && profile.showPhone && (
+          {/* Location */}
+          {profile?.location && (
             <View style={styles.detailRow}>
               <View style={styles.detailIcon}>
-                <Ionicons name="call-outline" size={20} color={theme.primary} />
+                <Ionicons name="location-outline" size={20} color={theme.primary} />
               </View>
               <View style={styles.detailContent}>
                 <Text style={[styles.detailLabel, { color: theme.placeholder }]}>
-                  Phone Number
+                  Location
                 </Text>
                 <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {profile.phoneNumber}
+                  {profile.location}
                 </Text>
               </View>
             </View>
@@ -315,18 +486,18 @@ const ProfileScreen = () => {
             </View>
           )}
 
-          {/* First Name & Last Name */}
-          {(profile?.firstName || profile?.lastName) && (
+          {/* Website */}
+          {profile?.website && (
             <View style={styles.detailRow}>
               <View style={styles.detailIcon}>
-                <Ionicons name="person-outline" size={20} color={theme.primary} />
+                <Ionicons name="link-outline" size={20} color={theme.primary} />
               </View>
               <View style={styles.detailContent}>
                 <Text style={[styles.detailLabel, { color: theme.placeholder }]}>
-                  Full Name
+                  Website
                 </Text>
                 <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {[profile?.firstName, profile?.lastName].filter(Boolean).join(' ') || 'Not provided'}
+                  {profile.website}
                 </Text>
               </View>
             </View>
@@ -353,8 +524,8 @@ const ProfileScreen = () => {
           <View style={styles.detailRow}>
             <View style={styles.detailIcon}>
               <Ionicons 
-                name={profile?.profileVisibility === 'PUBLIC' ? 'globe-outline' : 
-                      profile?.profileVisibility === 'PRIVATE' ? 'lock-closed-outline' : 
+                name={profile?.privacySettings?.profileVisibility === 'PUBLIC' ? 'globe-outline' : 
+                      profile?.privacySettings?.profileVisibility === 'PRIVATE' ? 'lock-closed-outline' : 
                       'people-outline'} 
                 size={20} 
                 color={theme.primary} 
@@ -365,7 +536,7 @@ const ProfileScreen = () => {
                 Profile Visibility
               </Text>
               <Text style={[styles.detailValue, { color: theme.text }]}>
-                {profile?.profileVisibility?.replace('_', ' ') || 'Public'}
+                {profile?.privacySettings?.profileVisibility || profile?.isPublic ? 'Public' : 'Private'}
               </Text>
             </View>
           </View>
@@ -381,7 +552,7 @@ const ProfileScreen = () => {
                   Academic Role
                 </Text>
                 <Text style={[styles.detailValue, { color: theme.text }]}>
-                  {profile.academicRole}
+                  {profile.academicRole.replace(/_/g, ' ')}
                 </Text>
               </View>
             </View>
@@ -391,46 +562,28 @@ const ProfileScreen = () => {
 
       {/* Skills & Interests */}
       {(profile?.skills && profile.skills.length > 0) || 
-       (profile?.interests && profile.interests.length > 0) || 
-       (profile?.socialRoles && profile.socialRoles.length > 0) ? (
+       (profile?.interests && profile.interests.length > 0) ? (
         <View style={styles.skillsContainer}>
           <LinearGradient
             colors={[theme.cardGradientStart, theme.cardGradientEnd]}
             style={styles.skillsCard}
           >
-            {profile?.socialRoles && profile.socialRoles.length > 0 && (
-              <View style={styles.skillsSection}>
-                <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                  Social Roles
-                </Text>
-                <View style={styles.tagsContainer}>
-                  {profile.socialRoles.map((role, index) => (
-                    <TouchableOpacity key={index} style={styles.tagButton}>
-                      <LinearGradient
-                        colors={[theme.energetic, theme.vibrant]}
-                        style={styles.tagGradient}
-                      >
-                        <Text style={styles.tagText}>{role}</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            )}
-
             {profile?.skills && profile.skills.length > 0 && (
               <View style={styles.skillsSection}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
                   Skills
                 </Text>
                 <View style={styles.tagsContainer}>
-                  {profile.skills.map((skill, index) => (
-                    <TouchableOpacity key={index} style={styles.tagButton}>
+                  {profile.skills.map((skill) => (
+                    <TouchableOpacity key={skill.id} style={styles.tagButton}>
                       <LinearGradient
                         colors={[theme.gradientStart, theme.gradientEnd]}
                         style={styles.tagGradient}
                       >
-                        <Text style={styles.tagText}>{skill}</Text>
+                        <Text style={styles.tagText}>
+                          {skill.skillName}
+                          {skill.verified && " ✓"}
+                        </Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   ))}
@@ -444,13 +597,13 @@ const ProfileScreen = () => {
                   Interests
                 </Text>
                 <View style={styles.tagsContainer}>
-                  {profile.interests.map((interest, index) => (
-                    <TouchableOpacity key={index} style={styles.tagButton}>
+                  {profile.interests.map((interestObj) => (
+                    <TouchableOpacity key={interestObj.id} style={styles.tagButton}>
                       <LinearGradient
                         colors={[theme.accent1, theme.accent2]}
                         style={styles.tagGradient}
                       >
-                        <Text style={styles.tagText}>{interest}</Text>
+                        <Text style={styles.tagText}>{interestObj.interest}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   ))}
@@ -462,7 +615,7 @@ const ProfileScreen = () => {
       ) : null}
 
       {/* Social Links */}
-      {profile?.socialLinks && Object.keys(profile.socialLinks).length > 0 && (
+      {profile?.socialLinks && profile.socialLinks.length > 0 && (
         <View style={styles.socialLinksContainer}>
           <LinearGradient
             colors={[theme.cardGradientStart, theme.cardGradientEnd]}
@@ -521,7 +674,7 @@ const ProfileScreen = () => {
                 Profile ID
               </Text>
               <Text style={[styles.detailValue, { color: theme.text, fontSize: 14 }]}>
-                {profile?.profileId?.substring(0, 8)}...
+                {profile?.id?.substring(0, 8)}...
               </Text>
             </View>
           </View>

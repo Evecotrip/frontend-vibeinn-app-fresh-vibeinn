@@ -1,5 +1,5 @@
 import { AnonymousProfileInterface, CreateAnonymousProfileRequest } from '@/types/userTypes';
-import { clearStoredAnonymousUserId, createAnonymousProfile, fetchAnonymousProfileById, generateAnonymousName, getStoredAnonymousUserId, updateAnonymousProfile } from '@/api/user/anonymous-user-api';
+// import { clearStoredAnonymousUserId, createAnonymousProfile, fetchAnonymousProfileById, generateAnonymousName, getStoredAnonymousUserId, updateAnonymousProfile } from '@/api/user/anonymous-user-api'; // Temporarily disabled
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -20,20 +20,12 @@ import { useThemes } from '../../../hooks/use-themes';
 
 interface FormData {
   anonymousName: string;
-  anonymousAvatarUrl?: string;
+  anonymousAvatar?: string; // Default avatar
+  anonymousAvatarUrl?: string; // Custom avatar
   anonymousBio?: string;
-  anonymousInterests: string;
-  colorTheme?: string;
 }
 
-const colorThemes = [
-  { name: 'blue', color: '#0066FF', label: 'Ocean Blue' },
-  { name: 'purple', color: '#5B21B6', label: 'Royal Purple' },
-  { name: 'green', color: '#10B981', label: 'Emerald Green' },
-  { name: 'pink', color: '#EC4899', label: 'Rose Pink' },
-  { name: 'orange', color: '#F59E0B', label: 'Sunset Orange' },
-  { name: 'red', color: '#EF4444', label: 'Ruby Red' },
-];
+// Removed colorThemes - not in new schema
 
 const defaultAvatars = [
   'https://api.dicebear.com/7.x/avataaars/png?seed=anonymous1',
@@ -59,10 +51,9 @@ const AnonymousProfile = () => {
   
   const [formData, setFormData] = useState<FormData>({
     anonymousName: '',
-    anonymousAvatarUrl: defaultAvatars[0],
+    anonymousAvatar: defaultAvatars[0], // Default avatar
+    anonymousAvatarUrl: undefined, // Custom avatar
     anonymousBio: '',
-    anonymousInterests: '',
-    colorTheme: 'blue',
   });
 
   useEffect(() => {
@@ -72,36 +63,41 @@ const AnonymousProfile = () => {
   const checkExistingProfile = async () => {
     setLoading(true);
     try {
-      const existingId = await getStoredAnonymousUserId();
-      console.log("🍏 Existing anonymous ID:", existingId);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      if (existingId) {
-        // Fetch existing profile details
-        const profile = await fetchAnonymousProfileById(existingId);
-        if (profile) {
-          console.log("✅ Found existing profile:", profile);
-          setExistingProfile(profile);
-          
-          // Populate form data with existing profile
-          setFormData({
-            anonymousName: profile.anonymousName || '',
-            anonymousAvatarUrl: profile.anonymousAvatarUrl || defaultAvatars[0],
-            anonymousBio: profile.anonymousBio || '',
-            anonymousInterests: Array.isArray(profile.anonymousInterests) 
-              ? profile.anonymousInterests.join(', ') 
-              : '',
-            colorTheme: profile.colorTheme === 'default' ? 'blue' : (profile.colorTheme || 'blue'),
-          });
-        } else {
-          // Profile not found on server, clear local storage
-          console.log("⚠️ Profile not found on server, clearing local storage");
-          await clearStoredAnonymousUserId();
-          setExistingProfile(null);
-        }
-      } else {
-        console.log("ℹ️ No existing anonymous profile found");
-        setExistingProfile(null);
-      }
+      // Dummy anonymous profile data matching new schema
+      const dummyProfile: AnonymousProfileInterface = {
+        id: "anon-550e8400-e29b-41d4-a716-446655440000",
+        tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+        userProfileId: "550e8400-e29b-41d4-a716-446655440000",
+        
+        // Anonymous identity
+        anonymousName: "Mystery Owl",
+        anonymousAvatar: defaultAvatars[2], // Default avatar
+        anonymousAvatarUrl: null, // Custom avatar (null = using default)
+        anonymousBio: "Just another anonymous user exploring the campus 🦉",
+        
+        // Status
+        isActive: true,
+        activatedAt: "2024-10-15T10:30:00Z",
+        deactivatedAt: null,
+        
+        // Timestamps
+        createdAt: "2024-10-15T10:30:00Z",
+        updatedAt: "2024-11-03T08:45:00Z",
+      };
+      
+      console.log("✅ Loaded dummy anonymous profile:", dummyProfile);
+      setExistingProfile(dummyProfile);
+      
+      // Populate form data with existing profile
+      setFormData({
+        anonymousName: dummyProfile.anonymousName || '',
+        anonymousAvatar: dummyProfile.anonymousAvatar || defaultAvatars[0],
+        anonymousAvatarUrl: dummyProfile.anonymousAvatarUrl || undefined,
+        anonymousBio: dummyProfile.anonymousBio || '',
+      });
     } catch (error) {
       console.error('Error checking existing profile:', error);
       setExistingProfile(null);
@@ -113,12 +109,17 @@ const AnonymousProfile = () => {
   const handleGenerateName = async () => {
     setGeneratingName(true);
     try {
-      const generatedName = await generateAnonymousName();
-      if (generatedName) {
-        setFormData(prev => ({ ...prev, anonymousName: generatedName }));
-      } else {
-        Alert.alert('Error', 'Failed to generate anonymous name. Please try again.');
-      }
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Generate random anonymous name
+      const adjectives = ['Mystery', 'Silent', 'Hidden', 'Shadow', 'Secret', 'Phantom', 'Ghost', 'Ninja', 'Stealth', 'Cosmic'];
+      const nouns = ['Owl', 'Fox', 'Wolf', 'Eagle', 'Tiger', 'Dragon', 'Phoenix', 'Raven', 'Hawk', 'Panther'];
+      const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
+      const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
+      const generatedName = `${randomAdj} ${randomNoun}`;
+      
+      setFormData(prev => ({ ...prev, anonymousName: generatedName }));
     } catch (error) {
       Alert.alert('Error', 'Failed to generate anonymous name. Please try again.');
     } finally {
@@ -134,20 +135,17 @@ const AnonymousProfile = () => {
 
     setSaving(true);
     try {
-      const interestsArray = formData.anonymousInterests
-        .split(',')
-        .map(interest => interest.trim())
-        .filter(interest => interest.length > 0);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const profileData: CreateAnonymousProfileRequest = {
         anonymousName: formData.anonymousName.trim(),
+        anonymousAvatar: formData.anonymousAvatar,
         anonymousAvatarUrl: formData.anonymousAvatarUrl,
         anonymousBio: formData.anonymousBio?.trim(),
-        anonymousInterests: interestsArray,
-        colorTheme: formData.colorTheme,
       };
 
-      const result = await createAnonymousProfile(profileData);
+      console.log('📝 Creating anonymous profile (dummy):', profileData);
       
       Alert.alert(
         'Success',
@@ -178,12 +176,9 @@ const AnonymousProfile = () => {
       // Reset form data to existing profile
       setFormData({
         anonymousName: existingProfile.anonymousName || '',
-        anonymousAvatarUrl: existingProfile.anonymousAvatarUrl || defaultAvatars[0],
+        anonymousAvatar: existingProfile.anonymousAvatar || defaultAvatars[0],
+        anonymousAvatarUrl: existingProfile.anonymousAvatarUrl || undefined,
         anonymousBio: existingProfile.anonymousBio || '',
-        anonymousInterests: Array.isArray(existingProfile.anonymousInterests) 
-          ? existingProfile.anonymousInterests.join(', ') 
-          : '',
-        colorTheme: existingProfile.colorTheme === 'default' ? 'blue' : (existingProfile.colorTheme || 'blue'),
       });
     }
     setIsEditingMode(false);
@@ -195,46 +190,38 @@ const AnonymousProfile = () => {
       return;
     }
 
-    if (!existingProfile?.anonymousId) {
+    if (!existingProfile?.id) {
       Alert.alert('Error', 'No profile ID found');
       return;
     }
 
     setSaving(true);
     try {
-      const interestsArray = formData.anonymousInterests
-        .split(',')
-        .map(interest => interest.trim())
-        .filter(interest => interest.length > 0);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const updateData: CreateAnonymousProfileRequest = {
         anonymousName: formData.anonymousName.trim(),
+        anonymousAvatar: formData.anonymousAvatar,
         anonymousAvatarUrl: formData.anonymousAvatarUrl,
         anonymousBio: formData.anonymousBio?.trim(),
-        anonymousInterests: interestsArray,
-        colorTheme: formData.colorTheme,
       };
 
-      console.log("🔄 Updating profile with data:", updateData);
-      const result = await updateAnonymousProfile(existingProfile.anonymousId, updateData);
+      console.log("🔄 Updating profile (dummy):", updateData);
       
-      if (result) {
-        Alert.alert(
-          'Success',
-          'Anonymous profile updated successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                setIsEditingMode(false);
-                checkExistingProfile(); // Refresh the profile data
-              },
+      Alert.alert(
+        'Success',
+        'Anonymous profile updated successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setIsEditingMode(false);
+              checkExistingProfile(); // Refresh the profile data
             },
-          ]
-        );
-      } else {
-        Alert.alert('Error', 'Failed to update anonymous profile. Please try again.');
-      }
+          },
+        ]
+      );
     } catch (error) {
       console.error('Error updating profile:', error);
       Alert.alert('Error', 'Failed to update anonymous profile. Please try again.');
@@ -257,15 +244,15 @@ const AnonymousProfile = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await clearStoredAnonymousUserId();
+              // Simulate deletion
+              console.log('🗑️ Deleting anonymous profile (dummy)');
               setExistingProfile(null);
               setIsEditingMode(false);
               setFormData({
                 anonymousName: '',
-                anonymousAvatarUrl: defaultAvatars[0],
+                anonymousAvatar: defaultAvatars[0],
+                anonymousAvatarUrl: undefined,
                 anonymousBio: '',
-                anonymousInterests: '',
-                colorTheme: 'blue',
               });
               Alert.alert('Success', 'Anonymous profile deleted successfully!');
             } catch (error) {
@@ -278,7 +265,7 @@ const AnonymousProfile = () => {
     );
   };
 
-  const selectedTheme = colorThemes.find(t => t.name === formData.colorTheme) || colorThemes[0];
+  // Removed selectedTheme - colorTheme not in new schema
 
   if (loading) {
     return (
@@ -343,7 +330,7 @@ const AnonymousProfile = () => {
               <View style={styles.profileDisplayContainer}>
                 <View style={styles.avatarContainer}>
                   <LinearGradient
-                    colors={[selectedTheme.color, `${selectedTheme.color}80`]}
+                    colors={[theme.gradientStart, `${theme.gradientStart}80`]}
                     style={styles.avatarGradient}
                   >
                     <Image source={{ uri: formData.anonymousAvatarUrl || defaultAvatars[0] }} style={styles.avatar} />
@@ -358,31 +345,13 @@ const AnonymousProfile = () => {
                   </View>
                 )}
                 
-                {existingProfile.anonymousInterests && existingProfile.anonymousInterests.length > 0 && (
-                  <View style={styles.interestsDisplayContainer}>
-                    <Text style={styles.sectionTitle}>Interests</Text>
-                    <View style={styles.interestsTags}>
-                      {existingProfile.anonymousInterests.map((interest, index) => (
-                        <View key={index} style={styles.interestTag}>
-                          <LinearGradient
-                            colors={[selectedTheme.color, `${selectedTheme.color}80`]}
-                            style={styles.interestTagGradient}
-                          >
-                            <Text style={styles.interestTagText}>{interest}</Text>
-                          </LinearGradient>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-                
                 <View style={styles.profileActions}>
                   <TouchableOpacity
                     style={styles.actionButton}
                     onPress={handleEditProfile}
                   >
                     <LinearGradient
-                      colors={[selectedTheme.color, `${selectedTheme.color}80`]}
+                      colors={[theme.gradientStart, `${theme.gradientStart}80`]}
                       style={styles.actionButtonGradient}
                     >
                       <Ionicons name="create-outline" size={20} color="white" />
@@ -414,7 +383,7 @@ const AnonymousProfile = () => {
               <Text style={styles.sectionTitle}>Choose Avatar</Text>
               <View style={styles.avatarContainer}>
                 <LinearGradient
-                  colors={[selectedTheme.color, `${selectedTheme.color}80`]}
+                  colors={[theme.gradientStart, `${theme.gradientStart}80`]}
                   style={styles.avatarGradient}
                 >
                   <Image source={{ uri: formData.anonymousAvatarUrl || defaultAvatars[0] }} style={styles.avatar} />
@@ -452,7 +421,7 @@ const AnonymousProfile = () => {
                   disabled={generatingName}
                 >
                   <LinearGradient
-                    colors={[selectedTheme.color, `${selectedTheme.color}80`]}
+                    colors={[theme.gradientStart, `${theme.gradientStart}80`]}
                     style={styles.generateButtonGradient}
                   >
                     {generatingName ? (
@@ -499,49 +468,7 @@ const AnonymousProfile = () => {
               <Text style={styles.characterCount}>{(formData.anonymousBio || '').length}/300</Text>
             </View>
 
-            {/* Interests Input */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Interests</Text>
-              <View style={[styles.inputContainer, { backgroundColor: theme.inputBackground }]}>
-                <Ionicons name="heart-outline" size={20} color={theme.placeholder} style={styles.inputIcon} />
-                <TextInput
-                  style={[styles.input, { color: theme.text }]}
-                  placeholder="Enter interests separated by commas"
-                  placeholderTextColor={theme.placeholder}
-                  value={formData.anonymousInterests}
-                  onChangeText={(text) => setFormData(prev => ({ ...prev, anonymousInterests: text }))}
-                  maxLength={200}
-                />
-              </View>
-              <Text style={styles.helperText}>Example: music, art, technology, sports</Text>
-            </View>
-
-            {/* Color Theme Selection */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Color Theme</Text>
-              <View style={styles.colorThemeContainer}>
-                {colorThemes.map((colorTheme) => (
-                  <TouchableOpacity
-                    key={colorTheme.name}
-                    style={[
-                      styles.colorThemeOption,
-                      formData.colorTheme === colorTheme.name && styles.selectedColorTheme
-                    ]}
-                    onPress={() => setFormData(prev => ({ ...prev, colorTheme: colorTheme.name }))}
-                  >
-                    <LinearGradient
-                      colors={[colorTheme.color, `${colorTheme.color}80`]}
-                      style={styles.colorThemeGradient}
-                    >
-                      {formData.colorTheme === colorTheme.name && (
-                        <Ionicons name="checkmark" size={20} color="white" />
-                      )}
-                    </LinearGradient>
-                    <Text style={styles.colorThemeLabel}>{colorTheme.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
+            {/* Note: Interests and Color Theme removed from new schema */}
 
             {/* Action Buttons */}
             <View style={styles.buttonContainer}>
@@ -566,7 +493,7 @@ const AnonymousProfile = () => {
                     disabled={saving}
                   >
                     <LinearGradient
-                      colors={[selectedTheme.color, `${selectedTheme.color}80`]}
+                      colors={[theme.gradientStart, `${theme.gradientStart}80`]}
                       style={styles.updateButtonGradient}
                     >
                       {saving ? (
@@ -587,7 +514,7 @@ const AnonymousProfile = () => {
                   disabled={saving}
                 >
                   <LinearGradient
-                    colors={[selectedTheme.color, `${selectedTheme.color}80`]}
+                    colors={[theme.gradientStart, `${theme.gradientStart}80`]}
                     style={styles.saveButtonGradient}
                   >
                     {saving ? (
@@ -847,28 +774,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
     textAlign: 'center',
-  },
-  interestsDisplayContainer: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  interestsTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  interestTag: {
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  interestTagGradient: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  interestTagText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
   },
   profileActions: {
     flexDirection: 'row',

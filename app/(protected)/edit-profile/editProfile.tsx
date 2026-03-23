@@ -1,5 +1,9 @@
-import { getCurrentUserProfile, updateUserProfile } from '@/api/user/user-api';
-import { UpdateProfileRequest, Gender, AcademicRole, ProfileVisibilityRequest } from '@/types/userTypes';
+// Edit Profile Screen
+// Updated to use dummy data matching new ProfileInterface schema
+// API integration temporarily disabled until backend is ready
+
+// import { getCurrentUserProfile, updateUserProfile } from '@/api/user/user-api'; // Temporarily disabled
+import { UpdateProfileRequest, Gender, AcademicRole, ProfileVisibility } from '@/types/userTypes';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -16,26 +20,18 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemes } from '../../../hooks/use-themes';
 
+// Updated FormData to match new ProfileInterface schema
 interface FormData {
-  firstName: string;
-  lastName: string;
-  displayName: string;
+  fullName: string;
   bio: string;
-  phoneNumber: string;
+  location: string;
+  website: string;
   dateOfBirth: string;
   gender: Gender | "";
-  profileImageUrl: string;
+  avatarUrl: string;
   coverImageUrl: string;
   academicRole: AcademicRole | "";
-  socialRoles: string;
-  skills: string;
-  interests: string;
-  twitterUrl: string;
-  linkedinUrl: string;
-  githubUrl: string;
-  profileVisibility: ProfileVisibilityRequest;
-  showEmail: boolean;
-  showPhone: boolean;
+  isPublic: boolean;
 }
 
 const EditProfile = () => {
@@ -44,25 +40,16 @@ const EditProfile = () => {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    displayName: '',
+    fullName: '',
     bio: '',
-    phoneNumber: '',
+    location: '',
+    website: '',
     dateOfBirth: '',
     gender: '',
-    profileImageUrl: '',
+    avatarUrl: '',
     coverImageUrl: '',
     academicRole: '',
-    socialRoles: '',
-    skills: '',
-    interests: '',
-    twitterUrl: '',
-    linkedinUrl: '',
-    githubUrl: '',
-    profileVisibility: 'PUBLIC',
-    showEmail: false,
-    showPhone: false,
+    isPublic: true,
   })
 
   useEffect(() => {
@@ -72,31 +59,50 @@ const EditProfile = () => {
   const loadUserProfile = async () => {
     setLoading(true)
     try {
-      const response = await getCurrentUserProfile()
-      if (response?.success && response.data.profile) {
-        const profile = response.data.profile
-        setFormData({
-          firstName: profile.firstName || '',
-          lastName: profile.lastName || '',
-          displayName: profile.displayName || '',
-          bio: profile.bio || '',
-          phoneNumber: profile.phoneNumber || '',
-          dateOfBirth: profile.dateOfBirth || '',
-          gender: (profile.gender as Gender) || '',
-          profileImageUrl: profile.profileImageUrl || '',
-          coverImageUrl: profile.coverImageUrl || '',
-          academicRole: (profile.academicRole as AcademicRole) || '',
-          socialRoles: Array.isArray(profile.socialRoles) ? profile.socialRoles.join(', ') : '',
-          skills: Array.isArray(profile.skills) ? profile.skills.join(', ') : '',
-          interests: Array.isArray(profile.interests) ? profile.interests.join(', ') : '',
-          twitterUrl: profile.socialLinks?.twitter || '',
-          linkedinUrl: profile.socialLinks?.linkedin || '',
-          githubUrl: profile.socialLinks?.github || '',
-          profileVisibility: (profile.profileVisibility as ProfileVisibilityRequest) || 'PUBLIC',
-          showEmail: profile.showEmail || false,
-          showPhone: profile.showPhone || false,
-        })
-      }
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Dummy profile data matching new schema
+      const dummyProfile = {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        tenantId: "504c6199-53b3-46c6-84d4-1a940c7bbd01",
+        authUserId: "auth-550e8400-e29b-41d4-a716-446655440000",
+        username: "johndoe",
+        slug: "johndoe",
+        fullName: "John Doe",
+        bio: "Computer Science student | Tech enthusiast",
+        location: "San Francisco, CA",
+        website: "https://johndoe.dev",
+        avatarUrl: "https://api.dicebear.com/7.x/avataaars/png?seed=johndoe",
+        coverImageUrl: "https://images.unsplash.com/photo-1557683316-973673baf926",
+        dateOfBirth: "2000-05-15",
+        gender: "MALE" as Gender,
+        academicRole: "UNDERGRADUATE" as AcademicRole,
+        isPublic: true,
+        isVerified: true,
+        verificationBadge: "verified_student",
+        followerCount: 234,
+        followingCount: 189,
+        postCount: 42,
+        createdAt: "2024-01-15T10:30:00Z",
+        updatedAt: "2024-11-03T08:45:00Z",
+        deletedAt: null,
+      };
+      
+      setFormData({
+        fullName: dummyProfile.fullName || '',
+        bio: dummyProfile.bio || '',
+        location: dummyProfile.location || '',
+        website: dummyProfile.website || '',
+        dateOfBirth: dummyProfile.dateOfBirth || '',
+        gender: dummyProfile.gender || '',
+        avatarUrl: dummyProfile.avatarUrl || '',
+        coverImageUrl: dummyProfile.coverImageUrl || '',
+        academicRole: dummyProfile.academicRole || '',
+        isPublic: dummyProfile.isPublic,
+      });
+      
+      console.log('✅ Loaded dummy profile:', dummyProfile);
     } catch (error) {
       Alert.alert('Error', 'Failed to load profile data')
     } finally {
@@ -107,37 +113,25 @@ const EditProfile = () => {
   const handleSave = async () => {
     setSaving(true)
     try {
-      // Prepare the update data
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Prepare the update data matching new schema
       const updateData: UpdateProfileRequest = {
-        firstName: formData.firstName || undefined,
-        lastName: formData.lastName || undefined,
-        displayName: formData.displayName || undefined,
+        fullName: formData.fullName || undefined,
         bio: formData.bio || undefined,
-        phoneNumber: formData.phoneNumber || undefined,
+        location: formData.location || undefined,
+        website: formData.website || undefined,
         dateOfBirth: formData.dateOfBirth || undefined,
         gender: (formData.gender as Gender) || undefined,
-        profileImageUrl: formData.profileImageUrl || undefined,
+        avatarUrl: formData.avatarUrl || undefined,
         coverImageUrl: formData.coverImageUrl || undefined,
         academicRole: (formData.academicRole as AcademicRole) || undefined,
-        socialRoles: formData.socialRoles ? formData.socialRoles.split(',').map(role => role.trim()).filter(role => role) : undefined,
-        skills: formData.skills ? formData.skills.split(',').map(skill => skill.trim()).filter(skill => skill) : undefined,
-        interests: formData.interests ? formData.interests.split(',').map(interest => interest.trim()).filter(interest => interest) : undefined,
-        socialLinks: {
-          twitter: formData.twitterUrl || undefined,
-          linkedin: formData.linkedinUrl || undefined,
-          github: formData.githubUrl || undefined,
-        },
-        profileVisibility: formData.profileVisibility,
-        showEmail: formData.showEmail,
-        showPhone: formData.showPhone,
-      }
-
-      const response = await updateUserProfile(updateData)
-      if (response?.success) {
-        Alert.alert('Success', 'Profile updated successfully!')
-      } else {
-        Alert.alert('Error', 'Failed to update profile')
-      }
+        isPublic: formData.isPublic,
+      };
+      
+      console.log('✅ Profile updated successfully (dummy):', updateData);
+      Alert.alert('Success', 'Profile updated successfully!');
     } catch (error) {
       Alert.alert('Error', 'Failed to update profile')
     } finally {
@@ -196,34 +190,12 @@ const EditProfile = () => {
           </View>
           
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>First Name</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Full Name</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.firstName}
-              onChangeText={(text) => setFormData({...formData, firstName: text})}
-              placeholder="Enter first name"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Last Name</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.lastName}
-              onChangeText={(text) => setFormData({...formData, lastName: text})}
-              placeholder="Enter last name"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Display Name</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.displayName}
-              onChangeText={(text) => setFormData({...formData, displayName: text})}
-              placeholder="Enter display name"
+              value={formData.fullName}
+              onChangeText={(text) => setFormData({...formData, fullName: text})}
+              placeholder="Enter your full name"
               placeholderTextColor={theme.placeholder}
             />
           </View>
@@ -242,14 +214,25 @@ const EditProfile = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Phone Number</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Location</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.phoneNumber}
-              onChangeText={(text) => setFormData({...formData, phoneNumber: text})}
-              placeholder="+1234567890"
+              value={formData.location}
+              onChangeText={(text) => setFormData({...formData, location: text})}
+              placeholder="City, Country"
               placeholderTextColor={theme.placeholder}
-              keyboardType="phone-pad"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={[styles.label, { color: theme.text }]}>Website</Text>
+            <TextInput
+              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
+              value={formData.website}
+              onChangeText={(text) => setFormData({...formData, website: text})}
+              placeholder="https://yourwebsite.com"
+              placeholderTextColor={theme.placeholder}
+              autoCapitalize="none"
             />
           </View>
 
@@ -289,12 +272,12 @@ const EditProfile = () => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Profile Image URL</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Avatar URL</Text>
             <TextInput
               style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.profileImageUrl}
-              onChangeText={(text) => setFormData({...formData, profileImageUrl: text})}
-              placeholder="https://example.com/profile.jpg"
+              value={formData.avatarUrl}
+              onChangeText={(text) => setFormData({...formData, avatarUrl: text})}
+              placeholder="https://example.com/avatar.jpg"
               placeholderTextColor={theme.placeholder}
               autoCapitalize="none"
             />
@@ -350,89 +333,11 @@ const EditProfile = () => {
             </View>
           </View>
           
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Skills (comma-separated)</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.skills}
-              onChangeText={(text) => setFormData({...formData, skills: text})}
-              placeholder="JavaScript, React, Node.js"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Interests (comma-separated)</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.interests}
-              onChangeText={(text) => setFormData({...formData, interests: text})}
-              placeholder="Technology, Music, Sports"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Social Roles (comma-separated)</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.socialRoles}
-              onChangeText={(text) => setFormData({...formData, socialRoles: text})}
-              placeholder="Student, Developer"
-              placeholderTextColor={theme.placeholder}
-            />
-          </View>
+          <Text style={[styles.helperText, { color: theme.placeholder }]}>
+            Note: Skills, interests, and social links are managed separately through the profile settings.
+          </Text>
         </LinearGradient>
 
-        <LinearGradient
-          colors={[theme.cardGradientStart, theme.cardGradientEnd]}
-          style={styles.section}
-        >
-          <View style={styles.sectionHeader}>
-            <LinearGradient
-              colors={[theme.gradientStart, theme.gradientEnd]}
-              style={styles.sectionBadge}
-            >
-              <Text style={styles.sectionBadgeText}>🔗 Social Links</Text>
-            </LinearGradient>
-          </View>
-          
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Twitter URL</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.twitterUrl}
-              onChangeText={(text) => setFormData({...formData, twitterUrl: text})}
-              placeholder="https://twitter.com/username"
-              placeholderTextColor={theme.placeholder}
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>LinkedIn URL</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.linkedinUrl}
-              onChangeText={(text) => setFormData({...formData, linkedinUrl: text})}
-              placeholder="https://linkedin.com/in/username"
-              placeholderTextColor={theme.placeholder}
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>GitHub URL</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.inputBackground, color: theme.text, borderColor: theme.border }]}
-              value={formData.githubUrl}
-              onChangeText={(text) => setFormData({...formData, githubUrl: text})}
-              placeholder="https://github.com/username"
-              placeholderTextColor={theme.placeholder}
-              autoCapitalize="none"
-            />
-          </View>
-        </LinearGradient>
 
         <LinearGradient
           colors={[theme.cardGradientStart, theme.cardGradientEnd]}
@@ -446,62 +351,25 @@ const EditProfile = () => {
               <Text style={styles.sectionBadgeText}>🔒 Privacy Settings</Text>
             </LinearGradient>
           </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={[styles.label, { color: theme.text }]}>Profile Visibility</Text>
-            <View style={styles.pickerContainer}>
-              {['PUBLIC', 'FRIENDS', 'COLLEGE', 'PRIVATE'].map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.pickerOption,
-                    { borderColor: theme.border },
-                    formData.profileVisibility === option && { backgroundColor: theme.primary }
-                  ]}
-                  onPress={() => setFormData({...formData, profileVisibility: option as any})}
-                >
-                  <Text style={[
-                    styles.pickerText,
-                    { color: formData.profileVisibility === option ? 'white' : theme.text }
-                  ]}>
-                    {option}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
           
           <View style={styles.switchRow}>
-            <Text style={[styles.label, { color: theme.text }]}>Show Email</Text>
+            <Text style={[styles.label, { color: theme.text }]}>Public Profile</Text>
             <TouchableOpacity
-              onPress={() => setFormData({...formData, showEmail: !formData.showEmail})}
+              onPress={() => setFormData({...formData, isPublic: !formData.isPublic})}
             >
               <LinearGradient
-                colors={formData.showEmail ? [theme.gradientStart, theme.gradientEnd] : [theme.border, theme.border]}
-                style={[styles.switch, formData.showEmail && styles.switchActive]}
+                colors={formData.isPublic ? [theme.gradientStart, theme.gradientEnd] : [theme.border, theme.border]}
+                style={[styles.switch, formData.isPublic && styles.switchActive]}
               >
-                <Text style={[styles.switchText, formData.showEmail && styles.switchTextActive]}>
-                  {formData.showEmail ? 'ON' : 'OFF'}
+                <Text style={[styles.switchText, formData.isPublic && styles.switchTextActive]}>
+                  {formData.isPublic ? 'ON' : 'OFF'}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
-
-          <View style={styles.switchRow}>
-            <Text style={[styles.label, { color: theme.text }]}>Show Phone</Text>
-            <TouchableOpacity
-              onPress={() => setFormData({...formData, showPhone: !formData.showPhone})}
-            >
-              <LinearGradient
-                colors={formData.showPhone ? [theme.gradientStart, theme.gradientEnd] : [theme.border, theme.border]}
-                style={[styles.switch, formData.showPhone && styles.switchActive]}
-              >
-                <Text style={[styles.switchText, formData.showPhone && styles.switchTextActive]}>
-                  {formData.showPhone ? 'ON' : 'OFF'}
-                </Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+          <Text style={[styles.helperText, { color: theme.placeholder }]}>
+            When enabled, your profile will be visible to everyone. When disabled, only you can see your profile.
+          </Text>
         </LinearGradient>
 
         <TouchableOpacity 
@@ -704,6 +572,12 @@ const styles = StyleSheet.create({
   pickerText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  helperText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginTop: 8,
+    lineHeight: 18,
   },
   saveButton: {
     paddingVertical: 18,

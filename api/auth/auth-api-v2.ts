@@ -16,12 +16,15 @@ export const USER_SYNCED_KEY = 'user_synced';
 export const TOKEN_OK_KEY = 'TOKEN_OK';
 
 // API Configuration
-const TENANT_API_KEY = process.env.EXPO_PUBLIC_TENANT_API_KEY;
+const TENANT_API_KEY = process.env.EXPO_PUBLIC_TENANT_API_KEY || '';
 
 // Constants for better maintainability
 const REQUEST_TIMEOUT = 15000;
-const ACCESS_TOKEN_EXPIRY_MINUTES = 14; // Updated to 14 minutes
+const ACCESS_TOKEN_EXPIRY_MINUTES = 14; // Updated to 14 minutes (not used for API calls)
 const REFRESH_TOKEN_EXPIRY_DAYS = 6; // Updated to 6 days
+
+// NOTE: We use refresh tokens primarily for API calls
+// Access tokens are only used for specific endpoints that require them
 
 // Helper functions for API requests
 const createRequestConfig = (
@@ -182,12 +185,12 @@ export async function refreshAccessToken() {
   }
 }
 
-// Validate current access token
+// Validate current refresh token
 export async function validateToken() {
-  const accessToken = await securelyGetValue(ACCESS_TOKEN_KEY);
+  const refreshToken = await securelyGetValue(REFRESH_TOKEN_KEY);
   
-  if (!accessToken) {
-    throw new Error("No access token available");
+  if (!refreshToken) {
+    throw new Error("No refresh token available");
   }
 
   const controller = new AbortController();
@@ -196,7 +199,7 @@ export async function validateToken() {
   try {
     const response = await fetch(
       `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/validate`,
-      createRequestConfig("GET", undefined, accessToken, controller.signal)
+      createRequestConfig("GET", undefined, refreshToken, controller.signal)
     );
 
     clearTimeout(timeoutId);
@@ -211,12 +214,12 @@ export async function validateToken() {
   }
 }
 
-// Get current user info
+// Get current user info using refresh token
 export async function getCurrentUser() {
-  const accessToken = await securelyGetValue(ACCESS_TOKEN_KEY);
+  const refreshToken = await securelyGetValue(REFRESH_TOKEN_KEY);
   
-  if (!accessToken) {
-    throw new Error("No access token available");
+  if (!refreshToken) {
+    throw new Error("No refresh token available");
   }
 
   const controller = new AbortController();
@@ -225,7 +228,7 @@ export async function getCurrentUser() {
   try {
     const response = await fetch(
       `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/me`,
-      createRequestConfig("GET", undefined, accessToken, controller.signal)
+      createRequestConfig("GET", undefined, refreshToken, controller.signal)
     );
 
     clearTimeout(timeoutId);
@@ -239,12 +242,12 @@ export async function getCurrentUser() {
   }
 }
 
-// Revoke tokens on logout
+// Revoke tokens on logout using refresh token
 export async function revokeTokens() {
-  const accessToken = await securelyGetValue(ACCESS_TOKEN_KEY);
+  const refreshToken = await securelyGetValue(REFRESH_TOKEN_KEY);
   
-  if (!accessToken) {
-    console.log("⚠️ No access token found, skipping revocation");
+  if (!refreshToken) {
+    console.log("⚠️ No refresh token found, skipping revocation");
     await clearStoredTokens();
     return;
   }
@@ -257,7 +260,7 @@ export async function revokeTokens() {
     
     const response = await fetch(
       `${process.env.EXPO_PUBLIC_API_BASE_URL}/auth/revoke`,
-      createRequestConfig("POST", undefined, accessToken, controller.signal)
+      createRequestConfig("POST", undefined, refreshToken, controller.signal)
     );
 
     clearTimeout(timeoutId);
@@ -278,7 +281,7 @@ export async function revokeTokens() {
 // Helper function to logout user in one call
 export async function logoutUser() {
   try {
-    // Attempt to revoke tokens (when backend endpoint is ready)
+    // Revoke tokens on backend
     await revokeTokens();
     
     // Clear auth-related storage in parallel for better performance
@@ -349,7 +352,7 @@ export async function getStoredUserInfo() {
   }
 }
 
-// Function to get valid access token with automatic refresh
+// Function to get valid refresh token (primary token for API calls)
 export async function getValidToken(clerkUserId?: string): Promise<string | null> {
   try {
     let storedTokens = await getStoredTokens();
@@ -375,7 +378,6 @@ export async function getValidToken(clerkUserId?: string): Promise<string | null
     // Step 2: Calculate token ages
     const currentTime = Date.now();
     const timeDifference = currentTime - storedTokens.timestamp;
-    const minutesPassed = Math.floor(timeDifference / (1000 * 60));
     const daysPassed = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
     
     // Step 3: Handle refresh token expiry (6 days)
@@ -386,7 +388,7 @@ export async function getValidToken(clerkUserId?: string): Promise<string | null
           await generateTokens(clerkUserId);
           storedTokens = await getStoredTokens();
           console.log("✅ Successfully generated new tokens after refresh token expiry.");
-          return storedTokens?.accessToken || null;
+          return storedTokens?.refreshToken || null;
         } catch (error) {
           console.error("❌ Failed to generate new tokens after refresh token expiry:", error);
           return null;
@@ -397,38 +399,49 @@ export async function getValidToken(clerkUserId?: string): Promise<string | null
       }
     }
     
-    // Step 4: Handle access token expiry (14 minutes)
+    // Step 4: Return valid refresh token (primary token for API calls)
+    console.log(`✅ Using refresh token (${daysPassed}d old, ${REFRESH_TOKEN_EXPIRY_DAYS - daysPassed}d remaining)`);
+    return storedTokens.refreshToken;
+    
+  } catch (error) {
+    console.error("❌ Error in getValidToken:", error);
+    return null;
+  }
+}
+
+// Function to get access token (only when specifically needed)
+export async function getAccessToken(): Promise<string | null> {
+  try {
+    const storedTokens = await getStoredTokens();
+    
+    if (!storedTokens) {
+      console.warn("⚠️ No tokens found in secure storage");
+      return null;
+    }
+    
+    // Calculate token age
+    const currentTime = Date.now();
+    const timeDifference = currentTime - storedTokens.timestamp;
+    const minutesPassed = Math.floor(timeDifference / (1000 * 60));
+    
+    // Check if access token is expired
     if (minutesPassed >= ACCESS_TOKEN_EXPIRY_MINUTES) {
       console.log(`🔄 Access token expired (${minutesPassed}min old), refreshing...`);
       try {
         await refreshAccessToken();
-        storedTokens = await getStoredTokens();
-        console.log("✅ Successfully refreshed access token.");
-        return storedTokens?.accessToken || null;
+        const newTokens = await getStoredTokens();
+        return newTokens?.accessToken || null;
       } catch (error) {
         console.error("❌ Failed to refresh access token:", error);
-        // If refresh fails and we have clerkUserId, try generating new tokens
-        if (clerkUserId) {
-          try {
-            await generateTokens(clerkUserId);
-            storedTokens = await getStoredTokens();
-            console.log("✅ Generated new tokens after refresh failure.");
-            return storedTokens?.accessToken || null;
-          } catch (genError) {
-            console.error("❌ Failed to generate new tokens:", genError);
-            return null;
-          }
-        }
         return null;
       }
     }
     
-    // Step 5: Return valid access token
     console.log(`✅ Using valid access token (${minutesPassed}min old, ${ACCESS_TOKEN_EXPIRY_MINUTES - minutesPassed}min remaining)`);
     return storedTokens.accessToken;
     
   } catch (error) {
-    console.error("❌ Error in getValidToken:", error);
+    console.error("❌ Error in getAccessToken:", error);
     return null;
   }
 }
@@ -500,6 +513,11 @@ export async function getTokenExpirationStatus(): Promise<{
   }
 }
 
+// Helper to get the primary token (refresh token) for API calls
+export async function getPrimaryToken(clerkUserId?: string): Promise<string | null> {
+  return getValidToken(clerkUserId);
+}
+
 // Sync user to database (for backward compatibility - may need updating based on new backend)
 export async function syncUserToDatabase(clerkUserId: string, authMethod: string = 'clerk') {
   console.log("⚠️ syncUserToDatabase may need updating for new backend architecture");
@@ -507,3 +525,15 @@ export async function syncUserToDatabase(clerkUserId: string, authMethod: string
   // For now, token generation handles user creation/sync
   return true;
 }
+
+// ===== TOKEN USAGE NOTES =====
+// PRIMARY TOKEN: Refresh Token (6 days validity)
+//   - Used for all API calls by default
+//   - Retrieved via getValidToken() or getPrimaryToken()
+//   - Automatically regenerated when expired
+//
+// SECONDARY TOKEN: Access Token (14 minutes validity)
+//   - Only used for specific endpoints that require it
+//   - Retrieved via getAccessToken()
+//   - Automatically refreshed when expired
+// ===== END TOKEN USAGE NOTES =====

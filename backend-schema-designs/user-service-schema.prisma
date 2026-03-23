@@ -1,0 +1,564 @@
+// prisma/schema.prisma
+// User Service
+// Last Updated: 2025-11-03
+// 
+// This schema includes:
+// - User profiles with multi-tenant isolation
+// - User-College relationship for verification
+// - Anonymous profiles
+// - Follow system (followers/following)
+// - Block system
+// - Privacy settings
+// - Social links, interests, skills, badges
+// - Profile views tracking
+// - User metadata
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+  binaryTargets   = ["native", "linux-musl", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// USER PROFILE MODEL
+// ==========================================
+model UserProfile {
+  id           String   @id @default(uuid()) @db.Uuid
+  
+  // Foreign keys to other services (stored as strings, no relations)
+  tenantId     String   @map("tenant_id") @db.Uuid
+  authUserId   String   @map("auth_user_id") @db.Uuid
+  
+  // User Service owns this data
+  username     String   @db.VarChar(50)
+  slug         String   @unique @db.VarChar(100)
+  fullName     String?  @map("full_name") @db.VarChar(255)
+  bio          String?  @db.Text
+  location     String?  @db.VarChar(255)
+  website      String?  @db.VarChar(500)
+  
+  avatarUrl       String?  @map("avatar_url") @db.VarChar(500)
+  coverImageUrl   String?  @map("cover_image_url") @db.VarChar(500)
+  
+  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
+  gender          Gender?
+  academicRole    AcademicRole? @map("academic_role")
+  
+  isPublic        Boolean   @default(true) @map("is_public")
+  isVerified      Boolean   @default(false) @map("is_verified")
+  verificationBadge String? @map("verification_badge") @db.VarChar(50)
+  
+  followerCount   Int       @default(0) @map("follower_count")
+  followingCount  Int       @default(0) @map("following_count")
+  postCount       Int       @default(0) @map("post_count")
+  
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt    DateTime? @map("deleted_at") @db.Timestamptz(6)
+  
+  // Relations (only within User Service)
+  collegeAffiliations UserCollege[]
+  anonymousProfile    AnonymousProfile?
+  followers           UserFollow[]     @relation("Following")
+  following           UserFollow[]     @relation("Follower")
+  blockers            UserBlock[]      @relation("Blocked")
+  blocking            UserBlock[]      @relation("Blocker")
+  privacySettings     PrivacySettings?
+  socialLinks         SocialLink[]
+  interests           UserInterest[]
+  skills              UserSkill[]
+  badges              UserBadge[]
+  metadata            UserMetadata?
+  profileViews        ProfileView[]
+  
+  @@unique([tenantId, username], name: "unique_tenant_username")
+  @@unique([tenantId, authUserId], name: "unique_tenant_auth_user")
+  
+  @@index([tenantId])
+  @@index([authUserId])
+  @@index([username])
+  @@index([slug])
+  @@index([tenantId, username])
+  @@index([isVerified])
+  @@index([academicRole])
+  @@index([createdAt])
+  @@index([username, fullName, bio], name: "idx_userprofiles_text_search")
+  
+  @@map("user_profiles")
+}
+
+// ==========================================
+// USER COLLEGE MODEL
+// ==========================================
+model UserCollege {
+  userCollegeId String @id @default(uuid()) @map("user_college_id") @db.Uuid
+  
+  // Foreign keys (stored as strings, no relations to other services)
+  tenantId      String @map("tenant_id") @db.Uuid
+  authUserId    String @map("auth_user_id") @db.Uuid
+  collegeId     String @map("college_id") @db.Uuid
+  
+  // User Service owns this data
+  studentId String? @map("student_id") @db.VarChar(50)
+  
+  verificationStatus VerificationStatus @default(UNVERIFIED) @map("verification_status")
+  status            StudentStatus       @default(CURRENT) @map("status")
+  
+  startDate DateTime?   @map("start_date") @db.Date
+  endDate   DateTime?   @map("end_date") @db.Date
+  degree    String? @map("degree") @db.VarChar(100)
+  major     String? @map("major") @db.VarChar(100)
+  
+  verificationDocuments Json      @default("{}") @map("verification_documents") @db.JsonB
+  verifiedAt           DateTime? @map("verified_at") @db.Timestamptz(6)
+  verifiedBy           String?   @map("verified_by") @db.Uuid
+  
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relation to UserProfile (within User Service)
+  userProfile UserProfile @relation(fields: [tenantId, authUserId], references: [tenantId, authUserId])
+  
+  @@unique([tenantId, authUserId, collegeId])
+  @@index([tenantId])
+  @@index([authUserId])
+  @@index([collegeId])
+  @@index([tenantId, authUserId])
+  @@index([verificationStatus])
+  @@index([status])
+  @@index([tenantId, collegeId])
+  
+  @@map("user_colleges")
+}
+
+// ==========================================
+// ANONYMOUS PROFILE MODEL
+// Allows users to post anonymously while maintaining trust
+// ==========================================
+model AnonymousProfile {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  userProfileId   String   @unique @map("user_profile_id") @db.Uuid
+  
+  // Anonymous Identity
+  anonymousName      String  @map("anonymous_name") @db.VarChar(100)
+  anonymousAvatar    String  @map("anonymous_avatar") @db.VarChar(500) // Default avatar
+  anonymousAvatarUrl String? @map("anonymous_avatar_url") @db.VarChar(500) // Custom avatar (if uploaded)
+  anonymousBio       String? @map("anonymous_bio") @db.VarChar(200)
+  
+  // Status
+  isActive        Boolean  @default(false) @map("is_active")
+  activatedAt     DateTime? @map("activated_at") @db.Timestamptz(6)
+  deactivatedAt   DateTime? @map("deactivated_at") @db.Timestamptz(6)
+  
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tenantId], name: "idx_anon_tenant")
+  @@index([userProfileId], name: "idx_anon_user_profile")
+  @@index([isActive], name: "idx_anon_active")
+  
+  @@map("anonymous_profiles")
+}
+
+// ==========================================
+// USER FOLLOW MODEL
+// Social graph - who follows whom
+// ==========================================
+model UserFollow {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  
+  // Status (for private profiles with follow requests)
+  status      FollowStatus @default(FOLLOWING)
+  
+  // Timestamp
+  followedAt  DateTime @default(now()) @map("followed_at") @db.Timestamptz(6)
+  
+  // Relations
+  follower  UserProfile @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following UserProfile @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  // Composite unique constraint
+  @@unique([tenantId, followerId, followingId], name: "unique_follow")
+  
+  // Indexes for performance
+  @@index([tenantId], name: "idx_follows_tenant")
+  @@index([followerId], name: "idx_follows_follower")
+  @@index([followingId], name: "idx_follows_following")
+  @@index([tenantId, followerId], name: "idx_follows_tenant_follower")
+  @@index([tenantId, followingId], name: "idx_follows_tenant_following")
+  @@index([status], name: "idx_follows_status")
+  @@index([followedAt], name: "idx_follows_date")
+  
+  @@map("user_follows")
+}
+
+// ==========================================
+// USER BLOCK MODEL
+// Allows users to block others for safety
+// ==========================================
+model UserBlock {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  
+  // Block reason and details
+  reason    BlockReason?
+  details   String?  @db.Text
+  
+  // Timestamp
+  blockedAt DateTime @default(now()) @map("blocked_at") @db.Timestamptz(6)
+  
+  // Relations
+  blocker UserProfile @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked UserProfile @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  
+  // Composite unique constraint
+  @@unique([tenantId, blockerId, blockedId], name: "unique_block")
+  
+  // Indexes
+  @@index([tenantId], name: "idx_blocks_tenant")
+  @@index([blockerId], name: "idx_blocks_blocker")
+  @@index([blockedId], name: "idx_blocks_blocked")
+  @@index([tenantId, blockerId], name: "idx_blocks_tenant_blocker")
+  
+  @@map("user_blocks")
+}
+
+// ==========================================
+// PRIVACY SETTINGS MODEL
+// Granular privacy controls for each user
+// ==========================================
+model PrivacySettings {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  userProfileId String   @unique @map("user_profile_id") @db.Uuid
+  
+  // Privacy Controls
+  profileVisibility ProfileVisibility @default(PUBLIC) @map("profile_visibility")
+  showEmail         Boolean          @default(false) @map("show_email")
+  showPhone         Boolean          @default(false) @map("show_phone")
+  showFollowers     Boolean          @default(true) @map("show_followers")
+  showFollowing     Boolean          @default(true) @map("show_following")
+  allowMessages     MessagePrivacy   @default(EVERYONE) @map("allow_messages")
+  allowTags         TagPrivacy       @default(EVERYONE) @map("allow_tags")
+  showOnlineStatus  Boolean          @default(true) @map("show_online_status")
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tenantId], name: "idx_privacy_tenant")
+  @@index([userProfileId], name: "idx_privacy_user_profile")
+  
+  @@map("privacy_settings")
+}
+
+// ==========================================
+// SOCIAL LINK MODEL
+// External social media links
+// ==========================================
+model SocialLink {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  userProfileId String   @map("user_profile_id") @db.Uuid
+  
+  // Link Details
+  platform      SocialPlatform
+  url           String   @db.VarChar(500)
+  displayOrder  Int      @default(0) @map("display_order")
+  
+  // Timestamp
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tenantId], name: "idx_social_tenant")
+  @@index([userProfileId], name: "idx_social_user_profile")
+  @@index([platform], name: "idx_social_platform")
+  
+  @@map("social_links")
+}
+
+// ==========================================
+// USER INTEREST MODEL
+// User interests and hobbies
+// ==========================================
+model UserInterest {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  userProfileId String   @map("user_profile_id") @db.Uuid
+  
+  // Interest Details
+  interest      String   @db.VarChar(100)
+  category      String?  @db.VarChar(50)
+  
+  // Timestamp
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  // Composite unique constraint
+  @@unique([tenantId, userProfileId, interest], name: "unique_interest")
+  
+  // Indexes
+  @@index([tenantId], name: "idx_interests_tenant")
+  @@index([userProfileId], name: "idx_interests_user_profile")
+  @@index([interest], name: "idx_interests_interest")
+  @@index([category], name: "idx_interests_category")
+  
+  @@map("user_interests")
+}
+
+// ==========================================
+// USER SKILL MODEL
+// Professional skills with proficiency levels
+// ==========================================
+model UserSkill {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  userProfileId String   @map("user_profile_id") @db.Uuid
+  
+  // Skill Details
+  skillName     String   @map("skill_name") @db.VarChar(100)
+  proficiency   SkillLevel @default(BEGINNER)
+  verified      Boolean  @default(false)
+  
+  // Timestamp
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  
+  // Relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  // Composite unique constraint
+  @@unique([tenantId, userProfileId, skillName], name: "unique_skill")
+  
+  // Indexes
+  @@index([tenantId], name: "idx_skills_tenant")
+  @@index([userProfileId], name: "idx_skills_user_profile")
+  @@index([skillName], name: "idx_skills_name")
+  @@index([proficiency], name: "idx_skills_proficiency")
+  
+  @@map("user_skills")
+}
+
+// ==========================================
+// USER BADGE MODEL
+// Achievements and special badges
+// ==========================================
+model UserBadge {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  userProfileId String   @map("user_profile_id") @db.Uuid
+  
+  // Badge Details
+  badgeType     BadgeType
+  badgeName     String   @map("badge_name") @db.VarChar(100)
+  badgeIcon     String   @map("badge_icon") @db.VarChar(50)
+  badgeColor    String?  @map("badge_color") @db.VarChar(20)
+  description   String?  @db.Text
+  
+  // Timestamps
+  awardedAt     DateTime @default(now()) @map("awarded_at") @db.Timestamptz(6)
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz(6)
+  
+  // Relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tenantId], name: "idx_badges_tenant")
+  @@index([userProfileId], name: "idx_badges_user_profile")
+  @@index([badgeType], name: "idx_badges_type")
+  @@index([awardedAt], name: "idx_badges_awarded")
+  
+  @@map("user_badges")
+}
+
+// ==========================================
+// PROFILE VIEW MODEL
+// Track who viewed whose profile
+// ==========================================
+model ProfileView {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  profileId String   @map("profile_id") @db.Uuid
+  viewerId  String?  @map("viewer_id") @db.Uuid // Null if anonymous viewer
+  
+  // View Details
+  viewedAt  DateTime @default(now()) @map("viewed_at") @db.Timestamptz(6)
+  ipAddress String   @map("ip_address") @db.Inet
+  userAgent String?  @map("user_agent") @db.Text
+  
+  // Relations
+  profile UserProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tenantId], name: "idx_views_tenant")
+  @@index([profileId], name: "idx_views_profile")
+  @@index([viewerId], name: "idx_views_viewer")
+  @@index([viewedAt], name: "idx_views_date")
+  @@index([tenantId, profileId, viewedAt], name: "idx_views_tenant_profile_date")
+  
+  @@map("profile_views")
+}
+
+// ==========================================
+// USER METADATA MODEL
+// Additional user metadata and settings
+// ==========================================
+model UserMetadata {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  userProfileId String   @unique @map("user_profile_id") @db.Uuid
+  
+  // Onboarding and Profile Status
+  onboardingCompleted Boolean @default(false) @map("onboarding_completed")
+  profileCompletion   Int     @default(0) @map("profile_completion")
+  
+  // Activity
+  lastActiveAt        DateTime? @map("last_active_at") @db.Timestamptz(6)
+  
+  // Preferences
+  timezone            String?  @db.VarChar(50)
+  language            String?  @db.VarChar(10)
+  
+  // Custom Fields (JSONB for flexibility)
+  customFields        Json?    @map("custom_fields")
+  
+  // Timestamps
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  
+  // Relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tenantId], name: "idx_metadata_tenant")
+  @@index([userProfileId], name: "idx_metadata_user_profile")
+  @@index([lastActiveAt], name: "idx_metadata_last_active")
+  
+  @@map("user_metadata")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum AcademicRole {
+  HIGH_SCHOOL_STUDENT
+  UNDERGRADUATE
+  GRADUATE
+  POSTGRADUATE
+  PHD_STUDENT
+  RESEARCHER
+  FACULTY
+  ALUMNI
+  OTHER
+}
+
+enum VerificationStatus {
+  UNVERIFIED          // Not verified yet
+  PENDING             // Verification in progress
+  VERIFIED_CURRENT    // Verified current student
+  VERIFIED_ALUMNI     // Verified alumni
+  VERIFIED_PROSPECTIVE // Verified prospective student
+  REJECTED            // Verification rejected
+  EXPIRED             // Verification expired (needs renewal)
+}
+
+enum StudentStatus {
+  CURRENT      // Currently enrolled
+  ALUMNI       // Graduated
+  PROSPECTIVE  // Accepted but not enrolled
+  TRANSFERRED  // Transferred to another institution
+  DROPPED      // Dropped out
+  SUSPENDED    // Temporarily suspended
+}
+
+enum FollowStatus {
+  FOLLOWING    // Actively following
+  REQUESTED    // Follow request pending (for private profiles)
+}
+
+enum BlockReason {
+  SPAM
+  HARASSMENT
+  INAPPROPRIATE
+  OTHER
+}
+
+enum ProfileVisibility {
+  PUBLIC      // Visible to everyone
+  FRIENDS     // Visible to followers only
+  PRIVATE     // Visible to user only
+}
+
+enum MessagePrivacy {
+  EVERYONE    // Anyone can message
+  FOLLOWERS   // Only followers can message
+  NONE        // No one can message
+}
+
+enum TagPrivacy {
+  EVERYONE    // Anyone can tag
+  FOLLOWERS   // Only followers can tag
+  NONE        // No one can tag
+}
+
+enum SocialPlatform {
+  LINKEDIN
+  GITHUB
+  TWITTER
+  INSTAGRAM
+  FACEBOOK
+  YOUTUBE
+  PORTFOLIO
+  WEBSITE
+  OTHER
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum BadgeType {
+  ACHIEVEMENT    // General achievements
+  VERIFICATION   // Verification badges
+  SPECIAL        // Special recognition
+  EVENT          // Event participation
+  CONTRIBUTOR    // Platform contributor
+  EARLY_ADOPTER  // Early user
+}
+

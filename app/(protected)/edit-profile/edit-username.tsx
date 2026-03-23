@@ -1,3 +1,7 @@
+// Edit Username Screen
+// Updated to use dummy data matching new ProfileInterface schema
+// API integration temporarily disabled until backend is ready
+
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -15,14 +19,14 @@ import {
     View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getCurrentUserProfile } from '../../../api/user/user-api';
-import {
-    checkUsernameAvailability,
-    generateUniqueUsername,
-    getUsernameSuggestions,
-    updateUsername,
-    validateUsername,
-} from '../../../api/user/username-user-api';
+// import { getCurrentUserProfile } from '../../../api/user/user-api'; // Temporarily disabled
+// import {
+//     checkUsernameAvailability,
+//     generateUniqueUsername,
+//     getUsernameSuggestions,
+//     updateUsername,
+//     validateUsername,
+// } from '../../../api/user/username-user-api'; // Temporarily disabled
 import { useThemes } from '../../../hooks/use-themes';
 
 const EditUserName = () => {
@@ -47,12 +51,15 @@ const EditUserName = () => {
   useEffect(() => {
     const loadCurrentUsername = async () => {
       try {
-        const profile = await getCurrentUserProfile();
-        if (profile?.data?.profile?.userName) {
-          const currentUsername = profile.data.profile.userName;
-          setUsername(currentUsername);
-          setOriginalUsername(currentUsername);
-        }
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Dummy current username matching new schema
+        const currentUsername = 'johndoe';
+        setUsername(currentUsername);
+        setOriginalUsername(currentUsername);
+        
+        console.log('✅ Loaded dummy username:', currentUsername);
       } catch (error) {
         console.error('Error loading current username:', error);
       } finally {
@@ -88,23 +95,31 @@ const EditUserName = () => {
 
     setIsChecking(true);
     try {
-      // First validate format
-      const validation = await validateUsername(usernameToCheck);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      if (validation.isValid) {
-        // Then check availability
-        const isAvailable = await checkUsernameAvailability(usernameToCheck);
+      // Dummy validation logic
+      const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/;
+      const isValidFormat = usernameRegex.test(usernameToCheck);
+      
+      if (!isValidFormat) {
+        setValidationStatus({
+          isValid: false,
+          isAvailable: null,
+          message: 'Username must be 3-30 characters and contain only letters, numbers, and underscores'
+        });
+      } else {
+        // Dummy availability check - simulate some taken usernames
+        const takenUsernames = ['admin', 'test', 'user', 'johndoe', 'janedoe'];
+        const isAvailable = !takenUsernames.includes(usernameToCheck.toLowerCase());
+        
         setValidationStatus({
           isValid: true,
           isAvailable,
           message: isAvailable ? 'Username is available!' : 'Username is already taken'
         });
-      } else {
-        setValidationStatus({
-          isValid: false,
-          isAvailable: null,
-          message: validation.message
-        });
+        
+        console.log('✅ Validated username (dummy):', usernameToCheck, 'Available:', isAvailable);
       }
     } catch (error) {
       setValidationStatus({
@@ -125,9 +140,23 @@ const EditUserName = () => {
 
     setIsLoadingSuggestions(true);
     try {
-      const suggestionList = await getUsernameSuggestions(username);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Generate dummy suggestions based on input
+      const base = username.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const suggestionList = [
+        `${base}_${Math.floor(Math.random() * 100)}`,
+        `${base}${new Date().getFullYear()}`,
+        `the_${base}`,
+        `${base}_official`,
+        `${base}_${Math.floor(Math.random() * 1000)}`,
+        `${base}_pro`,
+      ];
+      
       setSuggestions(suggestionList);
       setShowSuggestions(true);
+      console.log('✅ Generated dummy suggestions:', suggestionList);
     } catch (error) {
       Alert.alert('Error', 'Failed to generate suggestions. Please try again.');
     } finally {
@@ -137,8 +166,13 @@ const EditUserName = () => {
 
   const handleGenerateUnique = async () => {
     try {
-      const uniqueUsername = await generateUniqueUsername(username || 'user');
+      // Generate a dummy unique username
+      const base = username.trim() || 'user';
+      const randomSuffix = Math.floor(Math.random() * 10000);
+      const uniqueUsername = `${base.toLowerCase().replace(/[^a-z0-9]/g, '')}_${randomSuffix}`;
+      
       setUsername(uniqueUsername);
+      console.log('✅ Generated unique username (dummy):', uniqueUsername);
     } catch (error) {
       Alert.alert('Error', 'Failed to generate unique username. Please try again.');
     }
@@ -152,7 +186,12 @@ const EditUserName = () => {
 
     setIsSaving(true);
     try {
-      const updatedUsername = await updateUsername(username);
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Dummy success response
+      console.log('✅ Username updated successfully (dummy):', username);
+      
       Alert.alert(
         'Success',
         'Username updated successfully!',
